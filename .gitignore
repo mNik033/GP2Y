@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+
+# Browser profile and data
+profiles/*
+!profiles/.gitkeep
+
+# Screenshots
+screenshots/*
+!screenshots/.gitkeep
+
+# Local config & sensitive files
+*.local.json
+.env
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from automation_engine import (
     GoogleUltraAutomator,
     LocalHttpProxyAuthBridge,
-    get_totp,
     get_profile_dir,
     resolve_account_proxy,
     parse_proxy_string,
@@ -95,17 +94,22 @@ async def index():
 @app.get("/api/state")
 async def get_state():
     cfg = load_config()
-    rem_sec = 30 - (int(time.time()) % 30)
     accounts_out = []
     for acc in cfg.get("accounts", []):
-        item = dict(acc)
-        try:
-            item["totp_now"] = get_totp(acc.get("totp_secret", ""))
-        except Exception:
-            item["totp_now"] = "------"
-        item["totp_rem"] = rem_sec
-        item["is_running"] = acc["id"] in ACTIVE_TASKS
-        accounts_out.append(item)
+        accounts_out.append(
+            {
+                "id": acc.get("id", ""),
+                "email": acc.get("email", ""),
+                "has_totp": bool(acc.get("totp_secret")),
+                "status": acc.get("status", "pending"),
+                "current_step": acc.get("current_step", 0),
+                "step_message": acc.get("step_message", ""),
+                "expiry_date": acc.get("expiry_date", "-"),
+                "last_screenshot": acc.get("last_screenshot", ""),
+                "ip_info": acc.get("ip_info", ""),
+                "is_running": acc.get("id") in ACTIVE_TASKS,
+            }
+        )
 
     return {
         "target_region": cfg.get("target_region", "US"),
