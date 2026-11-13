@@ -1,97 +1,98 @@
-# Google AI Pro (5 TB) 零成本两年全自动控制台
+# Google AI Pro (5 TB) Zero-Cost Two-Year Automation Console
 
-基于 FastAPI + Playwright + CDP 开发的 Google AI Pro (5 TB) 权益自动化开通与管理控制台，提供本地可视化 Web 界面、批量账号调度、免税区绑卡与取消自动续费全流程支持。
-
----
-
-## 📌 功能特性
-
-- **可视化控制台**：提供现代化 Web UI，实时监控各账号执行状态、执行步骤、到期时间与截图回传。
-- **多格式账号批量导入**：支持普通密码、辅助邮箱验证以及 2FA/TOTP 密钥等多种格式快速录入。
-- **全流程自动化**：
-  - 自动处理 Google 登录与多因素安全验证
-  - 自动内嵌免税区（如俄勒冈免税州）账单地址与绑卡
-  - 阶梯式自动叠加开通 12 个月 + 6 个月 + 6 个月优惠（至高 24 个月权益）
-  - 自动前往 Google Play 取消自动续费，锁定到期权益
-- **安全保障与 0 元校验**：脚本内置金额确认为 `US$0.00` 保护机制，非 0 元订阅自动阻断并上报异常。
+A console for automating the activation and management of Google AI Pro (5 TB) benefits, built with FastAPI + Playwright + CDP. It provides a local visual web UI, batch account scheduling, tax-free-region card binding, and the full flow of cancelling auto-renewal.
 
 ---
 
-## 💻 运行环境要求
+## 📌 Features
 
-1. **操作系统**：Windows 10 / 11
-2. **浏览器**：Google Chrome（安装在系统默认路径即可）
-3. **Python 环境**：Python 3.10 或更高版本（安装时请勾选 `Add Python to PATH`）
-4. **网络环境**：本机全局美区代理（推荐），或在控制台面板中配置支持的代理地址/模板
+- **Visual console**: A modern web UI that monitors each account's execution status, current step, expiry date, and returned screenshots in real time.
+- **Multi-format bulk account import**: Quickly enter accounts with plain passwords, recovery-email verification, or 2FA/TOTP secrets.
+- **Fully automated flow**:
+  - Handles Google sign-in and multi-factor verification automatically
+  - Fills in a billing address in a tax-free region (e.g. Oregon, a no-sales-tax state) and binds the card
+  - Stacks offers step by step: 12 months + 6 months + 6 months (up to 24 months of benefits)
+  - Goes to Google Play to cancel auto-renewal and lock in the expiry date
+- **Safeguard and US$0.00 check**: The script confirms the amount is `US$0.00`; any non-zero subscription is blocked and reported as an error.
 
 ---
 
-## 🚀 快速启动
+## 💻 Requirements
 
-### 方式一：快捷脚本启动（推荐）
+1. **Operating system**: Windows 10 / 11
+2. **Browser**: Google Chrome (installed in the default system path)
+3. **Python**: Python 3.10 or later (check `Add Python to PATH` during installation)
+4. **Network**: A system-wide US proxy (recommended), or a supported proxy address/template configured in the console panel
 
-1. 首次使用请双击运行：`1_首次运行_安装依赖并启动.bat`
-2. 后续日常使用直接双击运行：`2_启动控制台.bat`
-3. 控制台服务启动后，浏览器将自动打开：`http://127.0.0.1:8765`
+---
 
-### 方式二：命令行手动启动
+## 🚀 Quick Start
+
+### Option 1: Launch scripts (recommended)
+
+1. On first use, double-click: `1_首次运行_安装依赖并启动.bat` (First run: install dependencies and start)
+2. For daily use afterwards, double-click: `2_启动控制台.bat` (Start console)
+3. Once the console service starts, the browser opens automatically at `http://127.0.0.1:8765`
+
+### Option 2: Manual command line
 
 ```bash
-# 1. 安装项目依赖
+# 1. Install project dependencies
 pip install -r requirements.txt
 
-# 2. 启动服务
+# 2. Start the service
 python app.py
 ```
 
-启动后访问本地端口：[http://127.0.0.1:8765](http://127.0.0.1:8765)
+After startup, open the local port: [http://127.0.0.1:8765](http://127.0.0.1:8765)
 
 ---
 
-## 📖 使用指南
+## 📖 Usage Guide
 
-### 1. 全局配置与支付卡设置
-1. 打开控制台左侧【全局配置与内联免税绑卡】区域。
-2. 填写用于验证的外币卡（Visa / Mastercard）卡号、有效期、CVC 与持卡人姓名。
-3. 免税地址默认已预设美国俄勒冈免税州邮编（`97201`），如无特殊需求无需变动。
-4. 点击【💾 保存配置】。
+### 1. Global configuration and payment card settings
+1. Open the **Global Config & Inline Tax-Free Card Binding** section on the left of the console.
+2. Enter the foreign-currency card (Visa / Mastercard) number, expiry date, CVC, and cardholder name used for verification.
+3. The tax-free address is preset to a US Oregon ZIP code (`97201`); leave it unchanged unless you have a specific need.
+4. Click **💾 Save Config**.
 
-### 2. 批量导入账号
-在网页右侧【批量放号导入区】粘贴账号信息（每行一个），支持如下常见格式：
+### 2. Bulk account import
+In the **Bulk Account Import** area on the right of the page, paste account information (one per line). These common formats are supported:
 ```text
-邮箱----密码----辅助邮箱
-邮箱----密码----辅助邮箱----2FA密钥
-邮箱----密码----2FA密钥
+email----password----recovery_email
+email----password----recovery_email----2FA_secret
+email----password----2FA_secret
 ```
-粘贴后点击【➕ 一键导入账号列表】即可加入执行队列。
+After pasting, click **➕ Import Account List** to add them to the execution queue.
 
-### 3. 任务执行与进度监控
-- **单账号执行**：点击目标账号右侧的【▶ 执行】。
-- **批量队列**：点击列表顶部的【▶ 批量全自动执行】，系统将依次全自动调度执行。
-- **执行流程拆解**：
-  - **Step 1**：启动浏览器，自动登录 Google 账号并完成安全验证。
-  - **Step 2**：填入账单地址并绑定卡片，开通首层优惠。
-  - **Step 3**：自动叠加二层免费周期。
-  - **Step 4**：叠加三层优惠周期（达到 24 个月封顶）。
-  - **Step 5**：跳转 Google Play 订阅管理页面取消后续自动扣款，锁定两年有效期并留存验证截图。
+### 3. Running tasks and monitoring progress
+- **Single account**: Click **▶ Run** to the right of the target account.
+- **Batch queue**: Click **▶ Run Batch Automatically** at the top of the list; the system runs the accounts one after another.
+- **Execution steps**:
+  - **Step 1**: Launch the browser, sign in to the Google account automatically, and complete security verification.
+  - **Step 2**: Fill in the billing address, bind the card, and activate the first offer layer.
+  - **Step 3**: Automatically stack the second free period.
+  - **Step 4**: Stack the third offer period (capped at 24 months).
+  - **Step 5**: Go to the Google Play subscription management page, cancel future auto-charges, lock in the two-year validity, and keep a verification screenshot.
 
 ---
 
-## 📂 目录结构说明
+## 📂 Directory Structure
 
 ```text
-├── 1_首次运行_安装依赖并启动.bat    # 首次自动安装依赖并启动脚本
-├── 2_启动控制台.bat              # 日常便捷启动脚本
-├── app.py                       # FastAPI 后端服务与路由调度
-├── automation_engine.py         # Playwright/CDP 核心自动化引擎
-├── templates/index.html         # Web 控制台前端页面
-├── requirements.txt             # Python 依赖清单
-├── config.json                  # 本地运行配置文件
-└── README.md                    # 项目说明文档
+├── 1_首次运行_安装依赖并启动.bat    # First run: install dependencies and start
+├── 2_启动控制台.bat              # Everyday start script
+├── app.py                       # FastAPI backend service and route dispatch
+├── automation_engine.py         # Core Playwright/CDP automation engine
+├── templates/index.html         # Web console front-end page
+├── requirements.txt             # Python dependency list
+├── config.json                  # Local runtime configuration file
+└── README.md                    # Project documentation
 ```
 
 ---
 
-## ⚠️ 免责声明
+## ⚠️ Disclaimer
 
-本项目仅供自动化测试、个人技术学习与研究之用，不鼓励或协助任何违反相关平台服务条款的行为。使用者应对使用本工具所产生的一切操作及后果负全部法律责任，作者不对任何直接或间接损失承担责任。
+This project is intended only for automation testing and personal technical learning and research. It does not encourage or assist any behavior that violates the terms of service of the relevant platforms. Users bear full legal responsibility for all operations and consequences arising from the use of this tool; the author accepts no liability for any direct or indirect loss.
+</Content>

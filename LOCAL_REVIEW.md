@@ -1,31 +1,32 @@
-# 本地解构与小幅重构
+# Local Deconstruction and Minor Refactor
 
-源仓库：https://github.com/worldonlyu/Google_AI_Pro_2Year_ZeroCost_Auto
+Source repository: https://github.com/worldonlyu/Google_AI_Pro_2Year_ZeroCost_Auto
 
-基线提交：1fb2e16711d842ec8fe7db44357a0cf1f1633172
+Baseline commit: 1fb2e16711d842ec8fe7db44357a0cf1f1633172
 
-## 模块与调用关系
+## Modules and call relationships
 
-| 文件 | 职责 |
+| File | Responsibility |
 | --- | --- |
-| `templates/index.html` | 单页控制台；每 1.5 秒轮询状态，提交配置和任务请求 |
-| `app.py` | FastAPI 路由、配置读写、内存任务队列、日志、手动浏览器入口 |
-| `automation_engine.py` | 浏览器定位、代理桥接、认证辅助、Playwright 流程与截图 |
-| `config.json` | 配置与账号状态的本机 JSON 存储 |
-| 两个 `.bat` | 安装依赖及启动本机 8765 端口的服务 |
+| `templates/index.html` | Single-page console; polls status every 1.5 seconds and submits config and task requests |
+| `app.py` | FastAPI routes, config read/write, in-memory task queue, logs, manual browser entry point |
+| `automation_engine.py` | Browser location, proxy bridge, auth helpers, Playwright flow, and screenshots |
+| `config.json` | Local JSON storage for config and account state |
+| Two `.bat` files | Install dependencies and start the service on local port 8765 |
 
-数据流：网页 → FastAPI 路由 → JSON 配置 / 内存任务 → 自动化引擎 → 状态回调 → JSON 配置 → 状态轮询 → 网页。
+Data flow: web page → FastAPI routes → JSON config / in-memory tasks → automation engine → state callback → JSON config → status polling → web page.
 
-## 本次变化
+## Changes in this round
 
-`get_state()` 从复制完整账号字典改为显式的展示字段白名单。密码、恢复邮箱、TOTP 密钥与动态码、账号代理，以及未来增加的未列入白名单字段，不再随账号列表返回。新增布尔字段 `has_totp` 表示是否配置了两步验证。
+`get_state()` changed from copying the full account dict to an explicit whitelist of display fields. Passwords, recovery emails, TOTP secrets and dynamic codes, per-account proxies, and any fields added in the future but not whitelisted are no longer returned in the account list. A new boolean field `has_totp` indicates whether two-step verification is configured.
 
-前端同步移除凭据展示和整套账号复制按钮，保留验证方式标记。配置表单回填、保存语义、路由、自动化引擎和依赖保持原样。没有拆成多个服务，也没有新增框架。
+The front end was updated to match: credential display and the whole-account copy button were removed, while the verification-method label was kept. Config form back-fill, save semantics, routes, the automation engine, and dependencies are unchanged. It was not split into multiple services and no new framework was added.
 
-## 验证与边界
+## Verification and limits
 
-执行 `python check_state.py app.py --require-redacted` 可离线验证实际状态处理函数，使用虚构账号，不导入自动化引擎，不登录、不绑卡、不发起订阅。该检查覆盖序列化边界，不等同于浏览器端或真实订阅端到端验证。
+Run `python check_state.py app.py --require-redacted` to verify the actual state-handling function offline. It uses fictitious accounts, does not import the automation engine, and does not sign in, bind a card, or start a subscription. This check covers the serialization boundary only; it is not equivalent to browser-side or real end-to-end subscription verification.
 
-发现但本次未处理：配置和顶层状态响应仍包含支付卡与代理模板；运行日志可能包含动态验证码；页面部分账号字段直接进入 HTML；JSON 写入缺少原子替换；批量运行标记在异步任务内部才设置，存在重复调度窗口；Windows GBK 控制台可能无法打印 emoji。
+Found but not addressed this round: the config and top-level state response still contain the payment card and proxy template; run logs may contain dynamic verification codes; some account fields go straight into HTML; JSON writes lack atomic replacement; the batch-running flag is set only inside the async task, leaving a window for duplicate scheduling; and the Windows GBK console may be unable to print emoji.
 
-本次仅减少账号列表的凭据暴露，不保证所有响应、日志或截图无敏感信息。README 中的零成本与两年权益属于上游项目声明，未验证。没有执行其促销叠加或支付流程。
+This round only reduces credential exposure in the account list; it does not guarantee that all responses, logs, or screenshots are free of sensitive information. The README's claims of zero cost and two-year benefits are upstream project claims and have not been verified. Its promotion-stacking or payment flows were not executed.
+</Content>
