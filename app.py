@@ -517,9 +517,9 @@ async def open_browser_manual(req: AccountActionReq):
 
     chrome_args.extend(
         [
-            "https://one.google.com/plans?hl=zh-CN",
-            "https://play.google.com/store/account/subscriptions?hl=zh-CN",
-            "https://play.google.com/store/account/orderhistory?hl=zh-CN",
+            "https://one.google.com/plans",
+            "https://play.google.com/store/account/subscriptions",
+            "https://play.google.com/store/account/orderhistory",
         ]
     )
     _launch_on_interactive_desktop(chrome_args)
