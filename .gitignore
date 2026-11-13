@@ -20,3 +20,6 @@ screenshots/*
 .idea/
 .DS_Store
 Thumbs.db
+
+# who is json?
+config.json
