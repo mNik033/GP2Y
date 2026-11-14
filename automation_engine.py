@@ -522,6 +522,13 @@ class GoogleUltraAutomator:
             patch["ip_info"] = ip_info
         self.on_state(patch)
 
+    async def pause(self, prompt: str) -> bool:
+        """Pause execution and ask the user to confirm continuation."""
+        self.log(f"[PAUSE] {prompt}")
+        # Simple blocking input; user must press Enter to continue.
+        await asyncio.get_event_loop().run_in_executor(None, lambda: input("Press Enter to continue..."))
+        return True
+
     async def save_screenshot(self, page, step_tag: str) -> str:
         fname = f"{self.account['id']}_{step_tag}_{int(time.time())}.png"
         fpath = os.path.join(SCREENSHOTS_DIR, fname)
@@ -960,9 +967,27 @@ class GoogleUltraAutomator:
                             if any(k in raw_t for k in ("添加付款方式", "首先添加付款方式", "添加信用卡或借记卡", "添加卡", "Add a payment method", "Add credit or debit card", "Add card")):
                                 add_btn = fr.locator("text=/添加信用卡或借记卡|添加卡|Add credit or debit card|Add card/i").last
                                 if await add_btn.count() > 0 and await add_btn.is_visible():
-                                    self.log(f"[{step_tag or 'modal'}] Checkout popup requires a payment method first; running inline tax-free card linking (ZIP 97201)...")
-                                    await asyncio.sleep(600.0)
-                                    return True
+                                    self.log(f"[{step_tag or 'modal'}] Checkout popup requires a payment method. Please add a card manually.")
+                                    # Pause and wait for user to add card
+                                    await self.pause(f"Add a payment method in the popup, then press Enter to continue.")
+                                    # Attempt to click add button again after user action
+                                    try:
+                                        await add_btn.click(force=True)
+                                    except Exception:
+                                        pass
+                                    await fr.evaluate(
+                                        """() => {
+                                        const els = Array.from(document.querySelectorAll('button, [role=\"button\"], div, span'));
+                                        for (let i = els.length - 1; i >= 0; i--) {
+                                            const t = (els[i].innerText || '').trim();
+                                            if (t === '添加卡' || t === '添加信用卡或借记卡' || t === 'Add card' || t === 'Add credit or debit card') {
+                                                els[i].click();
+                                                break;
+                                            }
+                                        }
+                                    }""")
+                                    for _ in range(20):
+                                        await asyncio.sleep(1.0)
                                     try:
                                         await add_btn.click(force=True)
                                     except Exception:
