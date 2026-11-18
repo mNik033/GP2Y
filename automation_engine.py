@@ -5,7 +5,10 @@ import hmac
 import json
 import os
 import re
+import shutil
+import signal
 import socket
+import sys
 import struct
 import subprocess
 import urllib.parse
@@ -14,15 +17,90 @@ from typing import Callable, Dict, Any, Optional
 from playwright.async_api import async_playwright
 
 def _find_chrome_path() -> str:
-    candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
-    ]
+    env_path = os.environ.get("CHROME_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    if sys.platform == "win32":
+        candidates = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+        ]
+    elif sys.platform == "darwin":
+        candidates = [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            os.path.expanduser("~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+        ]
+    else:
+        candidates = [
+            p for p in (
+                shutil.which("google-chrome"),
+                shutil.which("google-chrome-stable"),
+                shutil.which("chromium"),
+                shutil.which("chromium-browser"),
+            ) if p
+        ]
+
     for p in candidates:
         if os.path.exists(p):
             return p
-    return candidates[0]
+
+    raise FileNotFoundError(
+        "Google Chrome executable not found. Install Chrome or set the CHROME_PATH environment variable."
+    )
+
+
+def _kill_process_on_port(port: int) -> None:
+    try:
+        if sys.platform == "win32":
+            net_out = subprocess.check_output(
+                f"netstat -ano | findstr :{port}", shell=True
+            ).decode("gbk", errors="ignore")
+            for line in net_out.splitlines():
+                if "LISTENING" in line:
+                    old_pid = line.strip().split()[-1]
+                    subprocess.run(
+                        f"taskkill /F /T /PID {old_pid}",
+                        shell=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+        else:
+            out = subprocess.check_output(
+                ["lsof", "-ti", f":{port}"], stderr=subprocess.DEVNULL
+            ).decode("utf-8", errors="ignore")
+            for pid_str in out.splitlines():
+                pid_str = pid_str.strip()
+                if pid_str.isdigit():
+                    try:
+                        os.kill(int(pid_str), signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+    except Exception:
+        pass
+
+def _terminate_process_tree(proc: subprocess.Popen) -> None:
+    try:
+        if sys.platform == "win32":
+            subprocess.run(
+                f"taskkill /F /T /PID {proc.pid}",
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            pgid = os.getpgid(proc.pid)
+            os.killpg(pgid, signal.SIGTERM)
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(pgid, signal.SIGKILL)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
 
 
 CHROME_PATH = _find_chrome_path()
@@ -1772,17 +1850,12 @@ class GoogleUltraAutomator:
         chrome_args.append("about:blank")
 
         # Cleanly kill any lingering process listening on self.port
-        try:
-            net_out = subprocess.check_output(f"netstat -ano | findstr :{self.port}", shell=True).decode("gbk", errors="ignore")
-            for line in net_out.splitlines():
-                if "LISTENING" in line:
-                    old_pid = line.strip().split()[-1]
-                    subprocess.run(f"taskkill /F /T /PID {old_pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
+        _kill_process_on_port(self.port)
         await asyncio.sleep(0.8)
 
-        self.proc = subprocess.Popen(chrome_args)
+        # start_new_session=True creates a new process group on macOS/Linux for clean teardown
+        popen_kwargs = {} if sys.platform == "win32" else {"start_new_session": True}
+        self.proc = subprocess.Popen(chrome_args, **popen_kwargs)
         await asyncio.sleep(2.8)
 
         try:
@@ -1819,7 +1892,4 @@ class GoogleUltraAutomator:
             if self.proxy_bridge:
                 await self.proxy_bridge.stop()
             if self.proc:
-                try:
-                    subprocess.run(f"taskkill /F /T /PID {self.proc.pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except Exception:
-                    pass
+                _terminate_process_tree(self.proc)

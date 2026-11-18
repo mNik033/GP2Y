@@ -3,7 +3,9 @@ import json
 import os
 import re
 import shutil
+import ssl
 import subprocess
+import sys
 import time
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException
@@ -35,6 +37,7 @@ LOGS: List[str] = [
     f"[{time.strftime('%H:%M:%S')}] [SYSTEM] 🚀 Google AI Pro (5 TB) Zero-Cost 2-Year (US$0.00 -> 2028-10) Automation Console is ready!"
 ]
 ACTIVE_TASKS: Dict[str, GoogleUltraAutomator] = {}
+MANUAL_BRIDGES: Dict[str, LocalHttpProxyAuthBridge] = {}
 BATCH_RUNNING: bool = False
 STOP_BATCH: bool = False
 
@@ -153,7 +156,15 @@ async def test_proxy(req: ProxyTestReq):
 
     def _sync_probe():
         import urllib.request
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({"http": resolved, "https": resolved}))
+        try:
+            import certifi
+            ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ssl_ctx = ssl._create_unverified_context()
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": resolved, "https": resolved}),
+            urllib.request.HTTPSHandler(context=ssl_ctx),
+        )
         r = urllib.request.Request("https://ipwho.is/", headers={"User-Agent": "Mozilla/5.0"})
         data = json.loads(opener.open(r, timeout=15).read().decode("utf-8"))
         bal_gb = None
@@ -164,7 +175,7 @@ async def test_proxy(req: ProxyTestReq):
                     "https://api.floppydata.net/v2/account/balances",
                     headers={"X-Api-Key": api_key, "User-Agent": "Mozilla/5.0", "Connection": "close"},
                 )
-                bdata = json.loads(urllib.request.urlopen(rb, timeout=10).read().decode("utf-8"))
+                bdata = json.loads(urllib.request.urlopen(rb, timeout=10, context=ssl_ctx).read().decode("utf-8"))
                 bal_gb = bdata.get("proxy", {}).get("rotating", {}).get("total", {}).get("traffic", {}).get("availableGb")
             except Exception:
                 pass
@@ -408,8 +419,8 @@ MANUAL_BRIDGES: Dict[str, LocalHttpProxyAuthBridge] = {}
 
 def _launch_on_interactive_desktop(args: List[str]):
     """
-    Launch a GUI process (e.g. Chrome) explicitly onto the user's interactive desktop (winsta0\\default)
-    even if the backend server was started inside an isolated/background desktop session (e.g. exebox).
+    Launch a GUI process (e.g. Chrome) explicitly onto the user's interactive desktop (winsta0\\default on Windows,
+    or a detached Aqua GUI session on macOS), even if the backend server runs in a background session.
     """
     if os.name == "nt":
         try:
@@ -472,7 +483,12 @@ def _launch_on_interactive_desktop(args: List[str]):
                 return
         except Exception:
             pass
-    subprocess.Popen(args)
+    subprocess.Popen(
+        args,
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 @app.post("/api/open_browser")
@@ -482,7 +498,7 @@ async def open_browser_manual(req: AccountActionReq):
     if not target_acc:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    user_data_dir = get_profile_dir(target_acc["id"], target_acc["email"])
+    user_data_dir = os.path.expanduser(get_profile_dir(target_acc["id"], target_acc["email"]))
     target_region = cfg.get("target_region", "US")
     proxy_template = cfg.get("proxy_template", "")
     resolved_proxy = resolve_account_proxy(target_acc, target_region, proxy_template)
